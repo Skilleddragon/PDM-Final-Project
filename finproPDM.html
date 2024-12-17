@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Website Warung</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      text-align: center;
+    }
+    nav {
+      background-color: #333;
+      overflow: hidden;
+    }
+    nav a {
+      float: left;
+      display: block;
+      color: white;
+      text-align: center;
+      padding: 14px 20px;
+      text-decoration: none;
+    }
+    nav a:hover {
+      background-color: #ddd;
+      color: black;
+    }
+    .container {
+      padding: 20px;
+      display: none;
+    }
+    .container.active {
+      display: block;
+    }
+    .inventory-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    .inventory-table th, .inventory-table td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+    }
+    .inventory-table th {
+      background-color: #4CAF50;
+      color: white;
+    }
+    form {
+      margin-bottom: 20px;
+    }
+    form input, form button {
+      padding: 10px;
+      margin-right: 10px;
+    }
+    form button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    form button:hover {
+      background-color: #45a049;
+    }
+    .auth-container {
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 20px;
+      background-color: white;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      text-align: center;
+    }
+    .auth-container h2 {
+      margin-bottom: 20px;
+    }
+    .auth-container input {
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .auth-container button {
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .auth-container button:hover {
+      background-color: #45a049;
+    }
+    .auth-container a {
+      color: #4CAF50;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container" id="auth-container">
+    <h2 id="auth-title">Login</h2>
+    <form id="login-form" onsubmit="login(event)">
+      <input type="text" id="login-username" placeholder="Username" required>
+      <input type="password" id="login-password" placeholder="Password" required>
+      <button type="submit">Login</button>
+      <p>Don't have an account? <a onclick="toggleAuthForms()">Register</a></p>
+    </form>
+    <form id="register-form" style="display: none;" onsubmit="register(event)">
+      <input type="text" id="register-username" placeholder="Username" required>
+      <input type="password" id="register-password" placeholder="Password" required>
+      <button type="submit">Register</button>
+      <p>Already have an account? <a onclick="toggleAuthForms()">Login</a></p>
+    </form>
+  </div>
+
+  <div id="main-content" style="display: none;">
+    <header>
+      <h1>Website Warung</h1>
+    </header>
+    <nav>
+      <a href="#" onclick="navigate(event, 'home')">Home</a>
+      <a href="#" onclick="navigate(event, 'inventory')">Inventory Management</a>
+      <a href="#" onclick="navigate(event, 'order')">Order</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </nav>
+
+    <div id="home" class="container active">
+      <h2>Home</h2>
+      <p>Welcome to the home page.</p>
+    </div>
+
+    <div id="inventory" class="container">
+      <h2>Inventory Management</h2>
+      <form id="inventory-form" onsubmit="addInventoryItem(event)">
+        <input type="text" id="item-name" placeholder="Item Name" required>
+        <input type="number" id="item-quantity" placeholder="Quantity" required>
+        <button type="submit">Add Item</button>
+      </form>
+
+      <table class="inventory-table">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Item Name</th>
+            <th>Quantity</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="inventory-list">
+        </tbody>
+      </table>
+    </div>
+
+    <div id="order" class="container">
+      <h2>Order Management</h2>
+      <form id="order-form" onsubmit="submitOrderRequest(event)">
+        <input type="text" id="order-name" placeholder="Order Name" required>
+        <input type="number" id="order-quantity" placeholder="Quantity" required>
+        <button type="submit">Add Order</button>
+      </form>
+
+      <table class="inventory-table">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Order Name</th>
+            <th>Quantity</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="order-list">
+        </tbody>
+        <input type="text" id="request-box" placeholder="Chat with a staff member">
+        <button type="button" onclick="clearRequestBox()">Submit Request</button>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    let currentForm = localStorage.getItem('currentForm') || 'login';
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    let currentTab = localStorage.getItem('currentTab') || 'home';
+
+    function logout() {
+      localStorage.removeItem('isAuthenticated');
+      currentTab = 'home';
+      localStorage.setItem('currentTab', currentTab);
+
+      document.getElementById('auth-container').style.display = 'block';
+      document.getElementById('main-content').style.display = 'none';
+
+      document.getElementById('login-username').value = '';
+      document.getElementById('login-password').value = '';
+    }
+
+    function toggleAuthForms() {
+      const loginForm = document.getElementById('login-form');
+      const registerForm = document.getElementById('register-form');
+      const authTitle = document.getElementById('auth-title');
+      if (currentForm === 'login') {
+        loginForm.style.display = 'none';
+        registerForm.style.display = 'block';
+        authTitle.textContent = 'Register';
+        currentForm = 'register';
+      } else {
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+        authTitle.textContent = 'Login';
+        currentForm = 'login';
+      }
+      localStorage.setItem('currentForm', currentForm);
+    }
+
+    function register(event) {
+      event.preventDefault();
+      const username = document.getElementById('register-username').value.trim();
+      const password = document.getElementById('register-password').value;
+      if (users.some(user => user.username === username)) {
+        alert('Username already exists!');
+        return;
+      }
+      users.push({ username, password });
+      localStorage.setItem('users', JSON.stringify(users));
+      alert('Registration successful! Please log in.');
+      toggleAuthForms();
+    }
+
+    function login(event) {
+      event.preventDefault();
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      if (users.some(user => user.username === username && user.password === password)) {
+        alert(`Welcome, ${username}!`);
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        localStorage.setItem('isAuthenticated', 'true');
+      } else {
+        alert('Invalid username or password.');
+      }
+    }
+
+    window.onload = function () {
+      const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+      if (isAuthenticated) {
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        navigate(null, currentTab);
+      } else {
+        document.getElementById('auth-container').style.display = 'block';
+        document.getElementById('main-content').style.display = 'none';
+        if (currentForm === 'register') toggleAuthForms();
+      }
+    };
+
+    function navigate(event, tabId) {
+      if (event) event.preventDefault();
+      document.querySelectorAll('.container').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.getElementById(tabId).classList.add('active');
+      currentTab = tabId;
+      localStorage.setItem('currentTab', currentTab);
+    }
+
+    function addInventoryItem(event) {
+      event.preventDefault();
+      const itemName = document.getElementById('item-name').value.trim();
+      const itemQuantity = document.getElementById('item-quantity').value;
+      const table = document.getElementById('inventory-list');
+      const row = table.insertRow();
+      row.innerHTML = `
+        <td>${table.rows.length}</td>
+        <td>${itemName}</td>
+        <td>${itemQuantity}</td>
+        <td>
+          <button onclick="increase(${table.rows.length - 1})">Increase</button>
+          <button onclick="decrease(${table.rows.length - 1})">Decrease</button>
+          <button onclick="deleteItem(${table.rows.length - 1})">Delete</button>
+        </td>
+      `;
+      document.getElementById('item-name').value = '';
+      document.getElementById('item-quantity').value = '';
+    }
+
+    function clearRequestBox() {
+      document.getElementById('request-box').value = '';
+    }
+
+    function submitOrderRequest(event) {
+      event.preventDefault();
+      const orderName = document.getElementById('order-name').value.trim();
+      const orderQuantity = document.getElementById('order-quantity').value;
+      const table = document.getElementById('order-list');
+      const row = table.insertRow();
+      row.innerHTML = `
+        <td>${table.rows.length}</td>
+        <td>${orderName}</td>
+        <td>${orderQuantity}</td>
+        <td>
+          <button onclick="increase(${table.rows.length - 1}, 'order')">Increase</button>
+          <button onclick="decrease(${table.rows.length - 1}, 'order')">Decrease</button>
+          <button onclick="deleteItem(${table.rows.length - 1}, 'order')">Delete</button>
+        </td>
+      `;
+      document.getElementById('order-name').value = '';
+      document.getElementById('order-quantity').value = '';
+      document.getElementById('request-box').value = '';
+    }
+
+    function increase(index, listType = 'inventory') {
+      const table = document.getElementById(listType === 'inventory' ? 'inventory-list' : 'order-list');
+      const quantityCell = table.rows[index].cells[2];
+      let quantity = parseInt(quantityCell.textContent, 10);
+      quantity++;
+      quantityCell.textContent = quantity;
+    }
+
+    function decrease(index, listType = 'inventory') {
+      const table = document.getElementById(listType === 'inventory' ? 'inventory-list' : 'order-list');
+      const quantityCell = table.rows[index].cells[2];
+      let quantity = parseInt(quantityCell.textContent, 10);
+      if (quantity > 1) {
+        quantity--;
+        quantityCell.textContent = quantity;
+      }
+    }
+
+    function deleteItem(index, listType = 'inventory') {
+      const table = document.getElementById(listType === 'inventory' ? 'inventory-list' : 'order-list');
+      table.deleteRow(index);
+      for (let i = index; i < table.rows.length; i++) {
+        table.rows[i].cells[0].textContent = i + 1;
+      }
+    }
+  </script>
+</body>
+</html>
