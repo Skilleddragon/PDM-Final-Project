@@ -103,6 +103,27 @@
       color: #4CAF50;
       cursor: pointer;
     }
+    .image-grid {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+      gap: 20px;
+    }
+    .image-item {
+      text-align: center;
+      max-width: 150px;
+    }
+    .image-item img {
+      width: 100%;
+      border-radius: 8px;
+    }
+    .image-item p {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #333;
+    }
   </style>
 </head>
 <body>
@@ -127,15 +148,31 @@
       <h1>Website Warung</h1>
     </header>
     <nav>
-      <a href="#" onclick="navigate(event, 'home')">Home</a>
-      <a href="#" onclick="navigate(event, 'inventory')">Inventory Management</a>
-      <a href="#" onclick="navigate(event, 'order')">Order</a>
+      <a href="#home" onclick="navigate(event, 'home')">Home</a>
+      <a href="#inventory" onclick="navigate(event, 'inventory')" style="display: none;">Inventory Management</a>
+      <a href="#order" onclick="navigate(event, 'order')">Order</a>
       <a href="#" onclick="logout()">Logout</a>
     </nav>
 
     <div id="home" class="container active">
-      <h2>Home</h2>
-      <p>Welcome to the home page.</p>
+      <h2 id="home-title">Home</h2>
+      <p id="home-text">Welcome to the home page.</p>
+      <p id="home-text">For today's specials we have:</p>
+
+      <div id="customer-images" class="image-grid">
+        <div class="image-item">
+          <img src="https://via.placeholder.com/150" alt="Placeholder 1">
+          <p>Placeholder Text 1</p>
+        </div>
+        <div class="image-item">
+          <img src="https://via.placeholder.com/150" alt="Placeholder 2">
+          <p>Placeholder Text 2</p>
+        </div>
+        <div class="image-item">
+          <img src="https://via.placeholder.com/150" alt="Placeholder 3">
+          <p>Placeholder Text 3</p>
+        </div>
+      </div>
     </div>
 
     <div id="inventory" class="container">
@@ -161,7 +198,7 @@
     </div>
 
     <div id="order" class="container">
-      <h2>Order Management</h2>
+      <h2>Orders</h2>
       <form id="order-form" onsubmit="submitOrderRequest(event)">
         <input type="text" id="order-name" placeholder="Order Name" required>
         <input type="number" id="order-quantity" placeholder="Quantity" required>
@@ -172,6 +209,7 @@
         <thead>
           <tr>
             <th>No</th>
+            <th>Username</th>
             <th>Order Name</th>
             <th>Quantity</th>
             <th>Action</th>
@@ -182,27 +220,90 @@
         <input type="text" id="request-box" placeholder="Chat with a staff member">
         <button type="button" onclick="clearRequestBox()">Submit Request</button>
       </table>
+
+      <h3 id="message-table-title" style="display: none;">Customer Requests</h3>
+      <table id="message-table" style="display: none;">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Customer</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody id="message-list"></tbody>
+      </table>
     </div>
 
   </div>
-
   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+      const userRole = localStorage.getItem('userRole');
+  
+      if (isAuthenticated) {
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        adjustTabs(userRole);
+        navigate(null, currentTab || 'home');
+      } else {
+        document.getElementById('auth-container').style.display = 'block';
+        document.getElementById('main-content').style.display = 'none';
+      }
+    });
+  
+    function adjustTabs(role) {
+      const inventoryTab = document.querySelector('nav a[href="#inventory"]');
+      const orderTab = document.querySelector('nav a[href="#order"]');
+  
+      if (!inventoryTab || !orderTab) {
+        console.error("Tab elements not found. Check the navigation structure.");
+        return;
+      }
+  
+      inventoryTab.style.display = 'none';
+      orderTab.style.display = 'none';
+  
+      if (role === 'admin') {
+        inventoryTab.style.display = 'block';
+        orderTab.style.display = 'block';
+      } else if (role === 'customer') {
+        orderTab.style.display = 'block';
+      }
+    }
+  
     let currentForm = localStorage.getItem('currentForm') || 'login';
     const users = JSON.parse(localStorage.getItem('users')) || [];
     let currentTab = localStorage.getItem('currentTab') || 'home';
-
+    const orders = JSON.parse(localStorage.getItem('orders')) || [];
+  
     function logout() {
       localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('currentUser');
       currentTab = 'home';
       localStorage.setItem('currentTab', currentTab);
-
+  
       document.getElementById('auth-container').style.display = 'block';
       document.getElementById('main-content').style.display = 'none';
-
+  
       document.getElementById('login-username').value = '';
       document.getElementById('login-password').value = '';
     }
-
+  
+    window.onload = function () {
+      const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+      const userRole = localStorage.getItem('userRole');
+  
+      if (isAuthenticated) {
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        adjustTabs(userRole);
+        navigate(null, currentTab || 'home');
+      } else {
+        document.getElementById('auth-container').style.display = 'block';
+        document.getElementById('main-content').style.display = 'none';
+      }
+    };
+  
     function toggleAuthForms() {
       const loginForm = document.getElementById('login-form');
       const registerForm = document.getElementById('register-form');
@@ -220,7 +321,73 @@
       }
       localStorage.setItem('currentForm', currentForm);
     }
-
+  
+    function login(event) {
+      event.preventDefault();
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+  
+      if (username === 'Admin' && password === '123456789') {
+        alert('Welcome, Admin!');
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userRole', 'admin');
+        adjustTabs('admin');
+        navigate(null, 'home');
+        renderOrders();
+      } else if (users.some(user => user.username === username && user.password === password)) {
+        alert(`Welcome, ${username}!`);
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('currentUser', username);
+        localStorage.setItem('userRole', 'customer');
+        adjustTabs('customer');
+        navigate(null, 'home');
+        renderOrders();
+      } else {
+        alert('Invalid username or password.');
+      }
+    }
+  
+    function navigate(event, tabId) {
+      if (event) event.preventDefault();
+  
+      const userRole = localStorage.getItem('userRole');
+  
+      if (tabId === 'inventory' && userRole === 'customer') {
+        alert('Access Denied! Customers cannot access inventory.');
+        navigate(null, 'home');
+        return;
+      }
+  
+      document.querySelectorAll('.container').forEach(tab => {
+        tab.classList.remove('active');
+      });
+  
+      const activeTab = document.getElementById(tabId);
+      activeTab.classList.add('active');
+  
+      if (tabId === 'home') {
+        const homeTitle = document.getElementById('home-title');
+        const homeText = document.getElementById('home-text');
+        const customerImages = document.getElementById('customer-images');
+        if (userRole === 'admin') {
+          homeTitle.textContent = 'Admin Page';
+          homeText.textContent = 'Welcome, Admin! Manage your store here.';
+        } else if (userRole === 'customer') {
+          homeTitle.textContent = 'Customer Page';
+          homeText.textContent = 'Welcome, Customer! Browse and place your orders.';
+          if (customerImages) customerImages.style.display = 'flex';
+        } else {
+          homeTitle.textContent = 'Home';
+          homeText.textContent = 'Welcome to the home page.';
+          if (customerImages) customerImages.style.display = 'none';
+        }
+      }
+    }
+  
     function register(event) {
       event.preventDefault();
       const username = document.getElementById('register-username').value.trim();
@@ -234,112 +401,210 @@
       alert('Registration successful! Please log in.');
       toggleAuthForms();
     }
-
-    function login(event) {
-      event.preventDefault();
-      const username = document.getElementById('login-username').value;
-      const password = document.getElementById('login-password').value;
-      if (users.some(user => user.username === username && user.password === password)) {
-        alert(`Welcome, ${username}!`);
-        document.getElementById('auth-container').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
-        localStorage.setItem('isAuthenticated', 'true');
-      } else {
-        alert('Invalid username or password.');
-      }
-    }
-
-    window.onload = function () {
-      const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-      if (isAuthenticated) {
-        document.getElementById('auth-container').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
-        navigate(null, currentTab);
-      } else {
-        document.getElementById('auth-container').style.display = 'block';
-        document.getElementById('main-content').style.display = 'none';
-        if (currentForm === 'register') toggleAuthForms();
-      }
-    };
-
-    function navigate(event, tabId) {
-      if (event) event.preventDefault();
-      document.querySelectorAll('.container').forEach(tab => {
-        tab.classList.remove('active');
-      });
-      document.getElementById(tabId).classList.add('active');
-      currentTab = tabId;
-      localStorage.setItem('currentTab', currentTab);
-    }
-
-    function addInventoryItem(event) {
-      event.preventDefault();
-      const itemName = document.getElementById('item-name').value.trim();
-      const itemQuantity = document.getElementById('item-quantity').value;
-      const table = document.getElementById('inventory-list');
-      const row = table.insertRow();
-      row.innerHTML = `
-        <td>${table.rows.length}</td>
-        <td>${itemName}</td>
-        <td>${itemQuantity}</td>
-        <td>
-          <button onclick="deleteItem(${table.rows.length - 1})">Delete</button>
-        </td>
-      `;
-      document.getElementById('item-name').value = '';
-      document.getElementById('item-quantity').value = '';
-    }
-
+  
     function clearRequestBox() {
       document.getElementById('request-box').value = '';
     }
 
     function submitOrderRequest(event) {
       event.preventDefault();
+
       const orderName = document.getElementById('order-name').value.trim();
-      const orderQuantity = document.getElementById('order-quantity').value;
-      const table = document.getElementById('order-list');
-      const row = table.insertRow();
-      row.innerHTML = `
-        <td>${table.rows.length}</td>
-        <td>${orderName}</td>
-        <td>${orderQuantity}</td>
-        <td>
-          <button onclick="increase(${table.rows.length - 1}, 'order')">Increase</button>
-          <button onclick="decrease(${table.rows.length - 1}, 'order')">Decrease</button>
-          <button onclick="deleteItem(${table.rows.length - 1}, 'order')">Delete</button>
-        </td>
-      `;
+      const orderQuantity = parseInt(document.getElementById('order-quantity').value, 10);
+      const currentUser = localStorage.getItem('currentUser');
+
+      if (!currentUser) {
+        alert('Error: No user is logged in!');
+        return;
+      }
+
+      if (!orderName || isNaN(orderQuantity) || orderQuantity <= 0) {
+        alert('Please provide a valid order name and quantity.');
+        return;
+      }
+
+      const orderData = {
+        customer: currentUser,
+        name: orderName,
+        quantity: orderQuantity,
+      };
+
+      const existingOrders = JSON.parse(localStorage.getItem('orders')) || [];
+      existingOrders.push(orderData);
+      localStorage.setItem('orders', JSON.stringify(existingOrders));
+
+      renderOrders();
       document.getElementById('order-name').value = '';
       document.getElementById('order-quantity').value = '';
-      document.getElementById('request-box').value = '';
+      if (requestBox) requestBox.value = '';
+    }
+
+    function renderOrders() {
+      const table = document.getElementById('order-list');
+      table.innerHTML = '';
+
+      const existingOrders = JSON.parse(localStorage.getItem('orders')) || [];
+      const currentUser = localStorage.getItem('currentUser');
+      const userRole = localStorage.getItem('userRole');
+
+      const filteredOrders =
+        userRole === 'admin'
+          ? existingOrders
+          : existingOrders.filter(order => order.customer === currentUser);
+
+      filteredOrders.forEach((order, index) => {
+        const row = table.insertRow();
+
+        row.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${order.customer || 'Unknown'}</td>
+          <td>${order.name || 'Unknown'}</td>
+          <td>${order.quantity || 0}</td>
+          <td>
+            ${
+              userRole === 'admin' || order.customer === currentUser
+                ? `
+                <button onclick="increase(${index}, 'orders')">Increase</button>
+                <button onclick="decrease(${index}, 'orders')">Decrease</button>
+                <button onclick="deleteOrder(${index})">Delete</button>
+                `
+                : ''
+            }
+          </td>
+        `;
+      });
+      document.getElementById('order-name').value = '';
+      document.getElementById('order-quantity').value = '';
+      const requestBox = document.getElementById('request-box');
+      if (requestBox) requestBox.value = '';
+    }
+
+    function deleteOrder(index) {
+      const currentUser = localStorage.getItem('currentUser');
+      const userRole = localStorage.getItem('userRole');
+      const existingOrders = JSON.parse(localStorage.getItem('orders')) || [];
+
+      if (
+        userRole === 'admin' ||
+        (existingOrders[index] && existingOrders[index].customer === currentUser)
+      ) {
+        existingOrders.splice(index, 1);
+        localStorage.setItem('orders', JSON.stringify(existingOrders));
+        renderOrders();
+      } else {
+        alert('You are not authorized to delete this order.');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const userRole = localStorage.getItem('userRole');
+      if (userRole) {
+        renderOrders();
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+      const userRole = localStorage.getItem('userRole');
+
+      if (isAuthenticated) {
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        adjustTabs(userRole);
+        navigate(null, currentTab || 'home');
+        renderInventory();
+      } else {
+        document.getElementById('auth-container').style.display = 'block';
+        document.getElementById('main-content').style.display = 'none';
+      }
+    });
+
+    function addInventoryItem(event) {
+      event.preventDefault();
+      const itemName = document.getElementById('item-name').value.trim();
+      const itemQuantity = parseInt(document.getElementById('item-quantity').value, 10);
+
+      if (!itemName || isNaN(itemQuantity) || itemQuantity <= 0) {
+        alert('Please enter a valid item name and quantity.');
+        return;
+      }
+
+      const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+      inventory.push({ name: itemName, quantity: itemQuantity });
+      localStorage.setItem('inventory', JSON.stringify(inventory));
+
+      renderInventory();
+
+      document.getElementById('item-name').value = '';
+      document.getElementById('item-quantity').value = '';
+    }
+
+    function renderInventory() {
+      const table = document.getElementById('inventory-list');
+      table.innerHTML = '';
+
+      const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+
+      inventory.forEach((item, index) => {
+        const row = table.insertRow();
+        row.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${item.name}</td>
+          <td>${item.quantity}</td>
+          <td>
+            <button onclick="increase(${index}, 'inventory')">Increase</button>
+            <button onclick="decrease(${index}, 'inventory')">Decrease</button>
+            <button onclick="deleteItem(${index}, 'inventory')">Delete</button>
+          </td>
+        `;
+      });
     }
 
     function increase(index, listType = 'inventory') {
-      const table = document.getElementById(listType === 'inventory' ? 'inventory-list' : 'order-list');
-      const quantityCell = table.rows[index].cells[2];
-      let quantity = parseInt(quantityCell.textContent, 10);
-      quantity++;
-      quantityCell.textContent = quantity;
+      const list = JSON.parse(localStorage.getItem(listType)) || [];
+      if (list[index]) {
+        list[index].quantity++;
+        localStorage.setItem(listType, JSON.stringify(list));
+        if (listType === 'inventory') {
+          renderInventory();
+        } else if (listType === 'orders') {
+          renderOrders();
+        }
+      }
     }
 
     function decrease(index, listType = 'inventory') {
-      const table = document.getElementById(listType === 'inventory' ? 'inventory-list' : 'order-list');
-      const quantityCell = table.rows[index].cells[2];
-      let quantity = parseInt(quantityCell.textContent, 10);
-      if (quantity > 1) {
-        quantity--;
-        quantityCell.textContent = quantity;
+      const list = JSON.parse(localStorage.getItem(listType)) || [];
+      if (list[index] && list[index].quantity > 1) {
+        list[index].quantity--;
+        localStorage.setItem(listType, JSON.stringify(list));
+        if (listType === 'inventory') {
+          renderInventory();
+        } else if (listType === 'orders') {
+          renderOrders();
+        }
       }
     }
 
     function deleteItem(index, listType = 'inventory') {
-      const table = document.getElementById(listType === 'inventory' ? 'inventory-list' : 'order-list');
-      table.deleteRow(index);
-      for (let i = index; i < table.rows.length; i++) {
-        table.rows[i].cells[0].textContent = i + 1;
+      const inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+      if (listType === 'inventory') {
+        inventory.splice(index, 1);
+        localStorage.setItem('inventory', JSON.stringify(inventory));
+        renderInventory();
       }
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderInventory();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const userRole = localStorage.getItem('userRole');
+      if (userRole === 'admin') {
+        renderOrders();
+      }
+    });
   </script>
 </body>
 </html>
